@@ -150,21 +150,22 @@ builder.Services.AddSwaggerGen(options =>
 
 var app = builder.Build();
 
-// Seed Database (Development Only)
-if (app.Environment.IsDevelopment())
+// 6.5 Apply Migrations & Seed Database on Startup (All Environments)
+using (var scope = app.Services.CreateScope())
 {
-    using (var scope = app.Services.CreateScope())
+    var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
+    var context = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+    try
     {
-        var context = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
-        try
-        {
-            await DbInitializer.SeedAsync(context);
-        }
-        catch (Exception ex)
-        {
-            var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
-            logger.LogError(ex, "An error occurred while seeding the database.");
-        }
+        logger.LogInformation("[Database] Applying EF Core migrations and seeding initial data...");
+        await DbInitializer.SeedAsync(context);
+        logger.LogInformation("[Database] Database migrations and seed data completed successfully.");
+    }
+    catch (Exception ex)
+    {
+        logger.LogError(ex, "[Database] An error occurred while migrating or seeding the database.");
+        // Optional: depending on deployment strategy, rethrow if DB connection failure should abort startup:
+        // throw;
     }
 }
 
@@ -172,15 +173,13 @@ if (app.Environment.IsDevelopment())
 app.UseCors("DefaultCorsPolicy");
 app.UseMiddleware<ExceptionHandlingMiddleware>();
 
-if (app.Environment.IsDevelopment())
+// Enable Swagger UI across all environments for easy API testing and verification
+app.UseSwagger();
+app.UseSwaggerUI(c =>
 {
-    app.UseSwagger();
-    app.UseSwaggerUI(c =>
-    {
-        c.SwaggerEndpoint("/swagger/v1/swagger.json", "Health Bridge API v1");
-        c.RoutePrefix = "swagger";
-    });
-}
+    c.SwaggerEndpoint("/swagger/v1/swagger.json", "Health Bridge API v1");
+    c.RoutePrefix = "swagger";
+});
 
 if (!app.Environment.IsDevelopment())
 {

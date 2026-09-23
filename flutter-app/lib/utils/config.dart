@@ -2,20 +2,23 @@ import 'package:http/http.dart' as http;
 
 class ApiConfig {
   /// Set your live hosted backend URL here when deployed
-  static const String customProductionHost = '';
+  static const String customProductionHost = 'https://perpetual-hope-production-7825.up.railway.app';
 
   /// Can be overridden at build time via: flutter run --dart-define=API_URL=https://...
   static const String envApiUrl = String.fromEnvironment('API_URL');
 
-  static String _activeHost = envApiUrl.isNotEmpty
+  static String _cleanHost(String url) =>
+      url.trim().replaceAll(RegExp(r'/api/?$'), '').replaceAll(RegExp(r'/+$'), '');
+
+  static String _activeHost = _cleanHost(envApiUrl.isNotEmpty
       ? envApiUrl
       : (customProductionHost.isNotEmpty
           ? customProductionHost
-          : 'http://192.168.1.8:5126');
+          : 'http://192.168.1.8:5126'));
 
   static final List<String> candidateHosts = [
-    if (envApiUrl.isNotEmpty) envApiUrl,
-    if (customProductionHost.isNotEmpty) customProductionHost,
+    if (envApiUrl.isNotEmpty) _cleanHost(envApiUrl),
+    if (customProductionHost.isNotEmpty) _cleanHost(customProductionHost),
     'http://127.0.0.1:5126',   // ADB reverse port forwarding (USB connected physical device)
     'http://192.168.1.8:5126', // LAN IPv4 address of PC
     'http://10.0.2.2:5126',     // Android Emulator default loopback
